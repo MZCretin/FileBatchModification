@@ -1,8 +1,5 @@
 package cretin;
 
-import java.awt.Dimension;
-import java.awt.Point;
-import java.awt.Toolkit;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.File;
@@ -10,7 +7,6 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.util.ArrayList;
-import java.util.LinkedList;
 import java.util.List;
 
 import javax.swing.JButton;
@@ -22,8 +18,6 @@ import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
-import javax.swing.plaf.TextUI;
-import javax.swing.text.DefaultEditorKit.CopyAction;
 
 public class Modify extends JFrame {
 	private final int mWidth = 500;
@@ -36,6 +30,7 @@ public class Modify extends JFrame {
 	private JScrollPane jsp;
 	private String currPathString;
 	private List<File> list = new ArrayList<File>();
+	private String separator;
 
 	public Modify() {
 		setTitle("文件批量修改器");
@@ -51,6 +46,8 @@ public class Modify extends JFrame {
 		jsp.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
 		textArea.setLineWrap(true);// 设置文本区的换行策略
 		textArea.setEditable(false);
+		
+		separator = System.getProperties().getProperty("file.separator");
 
 		panel.add(textField);
 		panel.add(buttonSelect);
@@ -147,8 +144,10 @@ public class Modify extends JFrame {
 					for (int j = 0; j < sourceArrayLists.get(i).size(); j++) {
 						String path = sourceArrayLists.get(i).get(j);
 						System.out.println(path);
-						copyFile(path, currPathString + "/" + str[i], path
-								.substring(path.lastIndexOf("/") + 1)
+//						C:\Users\sks\Desktop\resources\resources\banner@2x.png
+//						C:\Users\sks\Desktop\resources\resources/@2x
+						copyFile(path, currPathString + separator + str[i], path
+								.substring(path.lastIndexOf(separator) + 1)
 								.replaceAll(str[i], ""));
 					}
 				}
@@ -199,7 +198,7 @@ public class Modify extends JFrame {
 	}
 
 	private String getNewPath(String oldPath, String split) {
-		String fileName = oldPath.substring(oldPath.lastIndexOf("/"));
+		String fileName = oldPath.substring(oldPath.lastIndexOf(separator));
 		return currPathString + File.separator + split
 				+ fileName.replaceAll(split, "");
 	}
@@ -207,13 +206,15 @@ public class Modify extends JFrame {
 	private void showAllFiles(File dir) throws Exception {
 		File[] fs = dir.listFiles();
 		for (int i = 0; i < fs.length; i++) {
-			textArea.append("文件:" + fs[i].getAbsolutePath() + "\n");
-			list.add(fs[i]);
 			if (fs[i].isDirectory()) {
+				textArea.append("文件夹:" + fs[i].getAbsolutePath() + "\n");
 				try {
 					showAllFiles(fs[i]);
 				} catch (Exception e) {
 				}
+			}else {
+				textArea.append("文件:" + fs[i].getAbsolutePath() + "\n");
+				list.add(fs[i]);
 			}
 		}
 	}
