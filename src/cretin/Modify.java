@@ -10,6 +10,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import javax.swing.JButton;
+import javax.swing.JCheckBox;
 import javax.swing.JFileChooser;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
@@ -19,12 +20,15 @@ import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
 
+import net.sourceforge.pinyin4j.PinyinHelper;
+
 public class Modify extends JFrame {
-	private final int mWidth = 500;
-	private final int mHeight = 300;
+	private final int mWidth = 600;
+	private final int mHeight = 400;
 	private JPanel panel;
 	private JButton buttonSelect;
 	private JButton buttonOk;
+	private JCheckBox jCheckBox;
 	private JTextField textField;
 	private JTextArea textArea;
 	private JScrollPane jsp;
@@ -36,26 +40,30 @@ public class Modify extends JFrame {
 		setTitle("文件批量修改器");
 		setSize(mWidth, mHeight);
 		setLocationRelativeTo(null);
+		setResizable(false);
 		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		panel = new JPanel();
 		buttonSelect = new JButton("选择文件");
 		buttonOk = new JButton("开始");
+		jCheckBox = new JCheckBox("文件名中文转拼音");
 		textField = new JTextField(10);
-		textArea = new JTextArea(14, 40);
+		textArea = new JTextArea(20, 48);
 		jsp = new JScrollPane(textArea);
 		jsp.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
 		textArea.setLineWrap(true);// 设置文本区的换行策略
 		textArea.setEditable(false);
-		
+
 		separator = System.getProperties().getProperty("file.separator");
 
 		panel.add(textField);
+		panel.add(jCheckBox);
 		panel.add(buttonSelect);
 		panel.add(buttonOk);
 		panel.add(jsp);
 
 		// 讲述使用说明
-		textArea.append("欢迎使用Cretin文件批量修改器 \n1、先在文本框输入不同尺寸图片的后缀(比如：pic@2x.png(两倍图),pic@3x.png(三倍图),那么您应该输入@2x跟@3x)，中间以空格隔开\n");
+		textArea.append(
+				"欢迎使用Cretin文件批量修改器 \n1、先在文本框输入不同尺寸图片的后缀(比如：pic@2x.png(两倍图),pic@3x.png(三倍图),那么您应该输入@2x跟@3x)，中间以空格隔开\n");
 		textArea.append("2、选择包含所有图片文件的文件夹\n");
 		textArea.append("3、点击开始，将为你自动分类图片\n");
 		textArea.append("4、图片分类成功后会在你选择的文件夹下面新建以后缀命名的文件夹(比如：@2x和@3两个文件夹，分别装有两倍图和三倍图图片)\n");
@@ -68,8 +76,7 @@ public class Modify extends JFrame {
 			public void actionPerformed(ActionEvent e) {
 				String tag = textField.getText();
 				if (tag == null || tag.equals("")) {
-					JOptionPane.showMessageDialog(getContentPane(),
-							"请在文本框中输入后缀", "系统信息", JOptionPane.WARNING_MESSAGE);
+					JOptionPane.showMessageDialog(getContentPane(), "请在文本框中输入后缀", "系统信息", JOptionPane.WARNING_MESSAGE);
 					return;
 				}
 				textArea.append("输入的后缀为:" + textField.getText() + "\n");
@@ -91,13 +98,11 @@ public class Modify extends JFrame {
 			public void actionPerformed(ActionEvent e) {
 				String tag = textField.getText();
 				if (tag == null || tag.equals("")) {
-					JOptionPane.showMessageDialog(getContentPane(),
-							"请在文本框中输入后缀", "系统信息", JOptionPane.WARNING_MESSAGE);
+					JOptionPane.showMessageDialog(getContentPane(), "请在文本框中输入后缀", "系统信息", JOptionPane.WARNING_MESSAGE);
 					return;
 				}
 				if (currPathString == null || currPathString.equals("")) {
-					JOptionPane.showMessageDialog(getContentPane(), "请选择文件夹",
-							"系统信息", JOptionPane.WARNING_MESSAGE);
+					JOptionPane.showMessageDialog(getContentPane(), "请选择文件夹", "系统信息", JOptionPane.WARNING_MESSAGE);
 					return;
 				}
 				doIt();
@@ -124,8 +129,7 @@ public class Modify extends JFrame {
 		for (int i = 0; i < count; i++) {
 			sourceArrayLists.add(new ArrayList<String>());
 		}
-		System.out
-				.println("sourceArrayLists.size() " + sourceArrayLists.size());
+		System.out.println("sourceArrayLists.size() " + sourceArrayLists.size());
 		System.out.println("list.size() " + list.size());
 		for (int i = 0; i < list.size(); i++) {
 			HH: for (int j = 0; j < count; j++) {
@@ -143,12 +147,18 @@ public class Modify extends JFrame {
 				for (int i = 0; i < count; i++) {
 					for (int j = 0; j < sourceArrayLists.get(i).size(); j++) {
 						String path = sourceArrayLists.get(i).get(j);
+						//banner.png
+						String pathAim = path.substring(path.lastIndexOf(separator) + 1).replaceAll(str[i], "");
+						String end = pathAim.substring(pathAim.lastIndexOf(".")+1);
+						String start = pathAim.substring(0,pathAim.lastIndexOf("."));
+						String resultStart = getPinyi(start);
+						
+						
 						System.out.println(path);
-//						C:\Users\sks\Desktop\resources\resources\banner@2x.png
-//						C:\Users\sks\Desktop\resources\resources/@2x
-						copyFile(path, currPathString + separator + str[i], path
-								.substring(path.lastIndexOf(separator) + 1)
-								.replaceAll(str[i], ""));
+						// C:\Users\sks\Desktop\resources\resources\banner@2x.png
+						// C:\Users\sks\Desktop\resources\resources/@2x
+						copyFile(path, currPathString + separator + str[i],
+								pathAim);
 					}
 				}
 				textArea.append("********************\n");
@@ -167,8 +177,7 @@ public class Modify extends JFrame {
 	 *            String 复制后路径 如：f:/fqf.txt
 	 * @return boolean
 	 */
-	public synchronized void copyFile(String oldPath, String newPath,
-			String fileName) {
+	public synchronized void copyFile(String oldPath, String newPath, String fileName) {
 		try {
 			int bytesum = 0;
 			int byteread = 0;
@@ -180,8 +189,7 @@ public class Modify extends JFrame {
 			File tempFile = new File(newFile.getAbsoluteFile(), fileName);
 			if (oldfile.exists()) { // 文件存在时
 				InputStream inStream = new FileInputStream(oldPath); // 读入原文件
-				FileOutputStream fs = new FileOutputStream(
-						tempFile.getAbsoluteFile());
+				FileOutputStream fs = new FileOutputStream(tempFile.getAbsoluteFile());
 				byte[] buffer = new byte[1444];
 				int length;
 				while ((byteread = inStream.read(buffer)) != -1) {
@@ -199,8 +207,7 @@ public class Modify extends JFrame {
 
 	private String getNewPath(String oldPath, String split) {
 		String fileName = oldPath.substring(oldPath.lastIndexOf(separator));
-		return currPathString + File.separator + split
-				+ fileName.replaceAll(split, "");
+		return currPathString + File.separator + split + fileName.replaceAll(split, "");
 	}
 
 	private void showAllFiles(File dir) throws Exception {
@@ -212,52 +219,36 @@ public class Modify extends JFrame {
 					showAllFiles(fs[i]);
 				} catch (Exception e) {
 				}
-			}else {
+			} else {
 				textArea.append("文件:" + fs[i].getAbsolutePath() + "\n");
 				list.add(fs[i]);
 			}
 		}
 	}
 
-	// public void traverseFolder1(String path) {
-	// int fileNum = 0, folderNum = 0;
-	// File file = new File(path);
-	// if (file.exists()) {
-	// File[] files = file.listFiles();
-	// for (File file2 : files) {
-	// if (file2.isDirectory()) {
-	// textArea.append("文件夹:" + file2.getAbsolutePath() + "\n");
-	// list.add(file2);
-	// folderNum++;
-	// } else {
-	// textArea.append("文件:" + file2.getAbsolutePath() + "\n");
-	// fileNum++;
-	// }
-	// }
-	// File temp_file;
-	// while (!list.isEmpty()) {
-	// temp_file = list.removeFirst();
-	// files = temp_file.listFiles();
-	// for (File file2 : files) {
-	// if (file2.isDirectory()) {
-	// textArea.append("文件夹:" + file2.getAbsolutePath() + "\n");
-	// list.add(file2);
-	// folderNum++;
-	// } else {
-	// textArea.append("文件:" + file2.getAbsolutePath() + "\n");
-	// fileNum++;
-	// }
-	// }
-	// }
-	// } else {
-	// textArea.append("文件不存在!\n");
-	// }
-	// textArea.append("文件夹共有:" + folderNum + ",文件共有:" + fileNum + "\n");
-	//
-	// }
-
 	// 程序入口
 	public static void main(String[] args) {
-		new Modify();
+		// new Modify();
+		System.out.println(getPinyi("你就是个丑角"));
+	}
+
+	public static String getPinyi(String text) {
+		if (text.length() > 4) {
+			text = text.substring(0, 4);
+		}
+		StringBuffer stringBuffer = new StringBuffer();
+		for (int i = 0; i < text.length(); i++) {
+			String[] pinyinArray = PinyinHelper.toHanyuPinyinStringArray(text.charAt(i));
+			if (pinyinArray != null && pinyinArray.length > 0) {
+				String str = pinyinArray[0];
+				if (i < 2) {
+					stringBuffer.append(str.substring(0, str.length() - 1));
+				} else {
+					if (str.length() > 0)
+						stringBuffer.append(str.substring(0, 1));
+				}
+			}
+		}
+		return stringBuffer.toString();
 	}
 }
