@@ -8,6 +8,7 @@ import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Random;
 
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
@@ -46,7 +47,9 @@ public class Modify extends JFrame {
 		buttonSelect = new JButton("选择文件");
 		buttonOk = new JButton("开始");
 		jCheckBox = new JCheckBox("文件名中文转拼音");
+		jCheckBox.setSelected(true);
 		textField = new JTextField(10);
+		textField.setText("@2x @3x");
 		textArea = new JTextArea(20, 48);
 		jsp = new JScrollPane(textArea);
 		jsp.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
@@ -111,12 +114,18 @@ public class Modify extends JFrame {
 		setVisible(true);
 	}
 
+	private List<String> fileNameList = new ArrayList<String>();
+
 	/**
 	 * 思路 1、遍历所有的文件 2、找出所有以@2和@3结尾的文件 3、将以不同后缀结尾的文件分别复制到各自的文件夹下 4、去掉后缀 5、搞定
 	 */
 	private void doIt() {
 		textArea.append("开始遍历文件....................\n");
+		// 所有的文件列表
 		list.clear();
+		for (File file : list) {
+			fileNameList.add(file.getName());
+		}
 		try {
 			showAllFiles(new File(currPathString));
 		} catch (Exception e) {
@@ -145,20 +154,39 @@ public class Modify extends JFrame {
 		new Thread(new Runnable() {
 			public void run() {
 				for (int i = 0; i < count; i++) {
+					textArea.append("第" + (i + 1) + "轮复制....................\n");
+					fileNameList.clear();
 					for (int j = 0; j < sourceArrayLists.get(i).size(); j++) {
 						String path = sourceArrayLists.get(i).get(j);
-						//banner.png
+						// banner.png
 						String pathAim = path.substring(path.lastIndexOf(separator) + 1).replaceAll(str[i], "");
-						String end = pathAim.substring(pathAim.lastIndexOf(".")+1);
-						String start = pathAim.substring(0,pathAim.lastIndexOf("."));
-						String resultStart = getPinyi(start);
-						
-						
-						System.out.println(path);
-						// C:\Users\sks\Desktop\resources\resources\banner@2x.png
-						// C:\Users\sks\Desktop\resources\resources/@2x
-						copyFile(path, currPathString + separator + str[i],
-								pathAim);
+						if (jCheckBox.isSelected()) {
+							String end = pathAim.substring(pathAim.lastIndexOf(".") + 1);
+							String start = pathAim.substring(0, pathAim.lastIndexOf("."));
+							String resultStart = getPinyi(start);
+							String result;
+							if (resultStart == null || resultStart.equals("")) {
+								// 不含中文 原文输出
+								result = pathAim;
+							} else {
+								result = resultStart + "." + end;
+								int index = 0;
+								while (fileNameList.contains(result)) {
+									// 此次不合格
+									result = resultStart + index++ + "." + end;
+								}
+							}
+							fileNameList.add(result);
+							System.out.println(path);
+							System.out.println(result);
+							// C:\Users\sks\Desktop\resources\resources\banner@2x.png
+							// C:\Users\sks\Desktop\resources\resources/@2x
+							copyFile(path, currPathString + separator + str[i], result);
+						} else {
+							// C:\Users\sks\Desktop\resources\resources\banner@2x.png
+							// C:\Users\sks\Desktop\resources\resources/@2x
+							copyFile(path, currPathString + separator + str[i], pathAim);
+						}
 					}
 				}
 				textArea.append("********************\n");
@@ -171,10 +199,8 @@ public class Modify extends JFrame {
 	/**
 	 * 复制单个文件
 	 * 
-	 * @param oldPath
-	 *            String 原文件路径 如：c:/fqf.txt
-	 * @param newPath
-	 *            String 复制后路径 如：f:/fqf.txt
+	 * @param oldPath String 原文件路径 如：c:/fqf.txt
+	 * @param newPath String 复制后路径 如：f:/fqf.txt
 	 * @return boolean
 	 */
 	public synchronized void copyFile(String oldPath, String newPath, String fileName) {
@@ -196,7 +222,7 @@ public class Modify extends JFrame {
 					bytesum += byteread; // 字节数 文件大小
 					fs.write(buffer, 0, byteread);
 				}
-				textArea.append(oldPath + "复制成功\n");
+				textArea.append(oldPath + "->" + fileName + "复制成功\n");
 				inStream.close();
 			}
 		} catch (Exception e) {
@@ -212,6 +238,11 @@ public class Modify extends JFrame {
 
 	private void showAllFiles(File dir) throws Exception {
 		File[] fs = dir.listFiles();
+		if (fs == null) {
+			JOptionPane.showMessageDialog(getContentPane(), "文件夹内无数据\n" + dir.getPath(), "系统信息",
+					JOptionPane.WARNING_MESSAGE);
+			return;
+		}
 		for (int i = 0; i < fs.length; i++) {
 			if (fs[i].isDirectory()) {
 				textArea.append("文件夹:" + fs[i].getAbsolutePath() + "\n");
@@ -228,10 +259,15 @@ public class Modify extends JFrame {
 
 	// 程序入口
 	public static void main(String[] args) {
-		// new Modify();
-		System.out.println(getPinyi("你就是个丑角"));
+		new Modify();
 	}
 
+	/**
+	 * 获取文字的拼音组合
+	 * 
+	 * @param text
+	 * @return
+	 */
 	public static String getPinyi(String text) {
 		if (text.length() > 4) {
 			text = text.substring(0, 4);
