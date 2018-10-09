@@ -1,0 +1,2 @@
+# FileBatchModification
+Android资源文件批量分类处理 具体使用请看博客
