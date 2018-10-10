@@ -9,7 +9,9 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -209,6 +211,8 @@ public class Modify extends JFrame {
 		textArea.append("开始遍历文件....................\n");
 		// 所有的文件列表
 		list.clear();
+		// 清除所有缓存
+		keys.clear();
 		try {
 			showAllFiles(new File(currPathString));
 		} catch (Exception e) {
@@ -333,7 +337,11 @@ public class Modify extends JFrame {
 							// 用英文翻译
 							String end = pathAim.substring(pathAim.lastIndexOf(".") + 1);
 							String start = pathAim.substring(0, pathAim.lastIndexOf("."));
-							start = dealTranslate(start);
+							// banner.png banner
+							if (keys.containsKey(start)) {
+								start = keys.get(start);
+							} else
+								start = dealTranslate(start);
 							System.out.println(pathAim + "->" + start);
 							String result;
 							if (length < start.length()) {
@@ -440,6 +448,8 @@ public class Modify extends JFrame {
 	// 编译正则表达式
 	private Pattern pattern = Pattern.compile(regEx);
 
+	private Map<String, String> keys = new HashMap<String, String>();
+
 	/**
 	 * 对翻译结果进行处理
 	 * 
@@ -458,7 +468,9 @@ public class Modify extends JFrame {
 			end = matcher.end();
 		}
 		finalStr.append(res.substring(end, res.length()));
-		return finalStr.toString().replaceAll(" ", "_");
+		String result = finalStr.toString().replaceAll(" ", "_");
+		keys.put(res, result);
+		return result;
 	}
 
 	/**
