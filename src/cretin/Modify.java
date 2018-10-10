@@ -7,6 +7,7 @@ import java.awt.event.ItemListener;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
+import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -385,8 +386,9 @@ public class Modify extends JFrame {
 	 * @return boolean
 	 */
 	public synchronized void copyFile(String oldPath, String newPath, String fileName) {
+		InputStream inStream = null;
+		FileOutputStream fs = null;
 		try {
-			int bytesum = 0;
 			int byteread = 0;
 			File oldfile = new File(oldPath);
 			File newFile = new File(newPath);
@@ -395,20 +397,28 @@ public class Modify extends JFrame {
 			}
 			File tempFile = new File(newFile.getAbsoluteFile(), fileName);
 			if (oldfile.exists()) { // 文件存在时
-				InputStream inStream = new FileInputStream(oldPath); // 读入原文件
-				FileOutputStream fs = new FileOutputStream(tempFile.getAbsoluteFile());
+				inStream = new FileInputStream(oldPath); // 读入原文件
+				fs = new FileOutputStream(tempFile.getAbsoluteFile());
 				byte[] buffer = new byte[1444];
-				int length;
 				while ((byteread = inStream.read(buffer)) != -1) {
-					bytesum += byteread; // 字节数 文件大小
 					fs.write(buffer, 0, byteread);
 				}
 				textArea.append(oldPath + "->" + fileName + " 复制成功\n");
 				inStream.close();
+				fs.close();
 			}
 		} catch (Exception e) {
 			System.out.println("复制单个文件操作出错");
 			e.printStackTrace();
+		} finally {
+			try {
+				if (inStream != null)
+					inStream.close();
+				if (fs != null)
+					fs.close();
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
 		}
 	}
 
