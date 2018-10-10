@@ -2,16 +2,20 @@ package cretin;
 
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.ItemEvent;
+import java.awt.event.ItemListener;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Random;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
+import javax.swing.JComboBox;
 import javax.swing.JFileChooser;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
@@ -21,23 +25,41 @@ import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
 
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
+
+import cretin.listener.JTextFieldHintListener;
+import cretin.model.TranslateModel;
 import net.sourceforge.pinyin4j.PinyinHelper;
+import translate.TransApi;
 
 public class Modify extends JFrame {
 	private final int mWidth = 600;
-	private final int mHeight = 400;
+	private final int mHeight = 430;
+	private static final String APP_ID = "20181010000217324";
+	private static final String SECURITY_KEY = "DmBJdQAnrfIEwgAfFKgN";
 	private JPanel panel;
 	private JButton buttonSelect;
 	private JButton buttonOk;
+	private JCheckBox jCheckBox0;
 	private JCheckBox jCheckBox;
+	private JCheckBox jCheckBox1;
+	private JCheckBox jCheckBox2;
 	private JTextField textField;
 	private JTextArea textArea;
+	private JComboBox jcb;
+	private JLabel jLabel;
 	private JScrollPane jsp;
 	private String currPathString;
 	private List<File> list = new ArrayList<File>();
 	private String separator;
+	private Gson gson;
+	private TransApi api;
+
+	private String jcbList[] = { "不限", "5", "8", "11", "14", "17" };
 
 	public Modify() {
+		gson = new Gson();
 		setTitle("文件批量修改器");
 		setSize(mWidth, mHeight);
 		setLocationRelativeTo(null);
@@ -46,10 +68,16 @@ public class Modify extends JFrame {
 		panel = new JPanel();
 		buttonSelect = new JButton("选择文件");
 		buttonOk = new JButton("开始");
+		jCheckBox0 = new JCheckBox("保留原文件名");
 		jCheckBox = new JCheckBox("文件名中文转拼音");
-		jCheckBox.setSelected(true);
+		jCheckBox1 = new JCheckBox("文件名中文转英文");
+		jCheckBox2 = new JCheckBox("仅翻译文件名");
+		jLabel = new JLabel("设置文件名称最大长度");
+		jcb = new JComboBox(jcbList);
+		jCheckBox1.setSelected(true);
 		textField = new JTextField(10);
 		textField.setText("@2x @3x");
+		textField.addFocusListener(new JTextFieldHintListener("请输入尺寸后缀", textField));
 		textArea = new JTextArea(20, 48);
 		jsp = new JScrollPane(textArea);
 		jsp.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
@@ -59,7 +87,12 @@ public class Modify extends JFrame {
 		separator = System.getProperties().getProperty("file.separator");
 
 		panel.add(textField);
+		panel.add(jCheckBox0);
 		panel.add(jCheckBox);
+		panel.add(jCheckBox1);
+		panel.add(jCheckBox2);
+		panel.add(jLabel);
+		panel.add(jcb);
 		panel.add(buttonSelect);
 		panel.add(buttonOk);
 		panel.add(jsp);
@@ -69,20 +102,61 @@ public class Modify extends JFrame {
 				"欢迎使用Cretin文件批量修改器 \n1、先在文本框输入不同尺寸图片的后缀(比如：pic@2x.png(两倍图),pic@3x.png(三倍图),那么您应该输入@2x跟@3x)，中间以空格隔开\n");
 		textArea.append("2、选择包含所有图片文件的文件夹\n");
 		textArea.append("3、点击开始，将为你自动分类图片\n");
-		textArea.append("4、图片分类成功后会在你选择的文件夹下面新建以后缀命名的文件夹(比如：@2x和@3两个文件夹，分别装有两倍图和三倍图图片)\n");
+		textArea.append(
+				"4、图片分类成功后会在你选择的文件夹下面新建以后缀命名的文件夹(比如：@2x和@3两个文件夹，分别装有两倍图和三倍图图片)\n5、使用中有什么问题可联系：mxnzp_life@163.com\n");
 		textArea.append("-----------------------------------------\n");
 
 		add(panel);
 
+		jCheckBox.addItemListener(new ItemListener() {
+
+			public void itemStateChanged(ItemEvent e) {
+				JCheckBox jcb = (JCheckBox) e.getItem();// 将得到的事件强制转化为JCheckBox类
+				if (jcb.isSelected()) {// 判断是否被选择
+					jCheckBox0.setSelected(false);
+					jCheckBox1.setSelected(false);
+				}
+			}
+		});
+
+		jCheckBox0.addItemListener(new ItemListener() {
+
+			public void itemStateChanged(ItemEvent e) {
+				JCheckBox jcb = (JCheckBox) e.getItem();// 将得到的事件强制转化为JCheckBox类
+				if (jcb.isSelected()) {// 判断是否被选择
+					jCheckBox.setSelected(false);
+					jCheckBox1.setSelected(false);
+				}
+			}
+		});
+
+		jCheckBox1.addItemListener(new ItemListener() {
+
+			public void itemStateChanged(ItemEvent e) {
+				JCheckBox jcb = (JCheckBox) e.getItem();// 将得到的事件强制转化为JCheckBox类
+				if (jcb.isSelected()) {// 判断是否被选择
+					jCheckBox0.setSelected(false);
+					jCheckBox.setSelected(false);
+				}
+			}
+		});
+
 		// 选择文件夹
 		buttonSelect.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
-				String tag = textField.getText();
-				if (tag == null || tag.equals("")) {
-					JOptionPane.showMessageDialog(getContentPane(), "请在文本框中输入后缀", "系统信息", JOptionPane.WARNING_MESSAGE);
-					return;
+				if (jCheckBox2.isSelected()) {
+					// 仅翻译文件名
+					textArea.append("当前模式:仅修改文件名" + "\n");
+				} else {
+					String tag = textField.getText();
+					if (tag == null || tag.equals("")) {
+						JOptionPane.showMessageDialog(getContentPane(), "请在文本框中输入后缀", "系统信息",
+								JOptionPane.WARNING_MESSAGE);
+						return;
+					}
+					textArea.append("当前模式:根据后缀区分并命名\n输入的后缀为:" + textField.getText() + "\n");
 				}
-				textArea.append("输入的后缀为:" + textField.getText() + "\n");
+
 				JFileChooser jfc = new JFileChooser();
 				jfc.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
 				jfc.showDialog(new JLabel(), "选择文件夹");
@@ -99,22 +173,34 @@ public class Modify extends JFrame {
 		// 开始
 		buttonOk.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
-				String tag = textField.getText();
-				if (tag == null || tag.equals("")) {
-					JOptionPane.showMessageDialog(getContentPane(), "请在文本框中输入后缀", "系统信息", JOptionPane.WARNING_MESSAGE);
-					return;
+				if (jCheckBox2.isSelected()) {
+					// 仅翻译文件名
+				} else {
+					String tag = textField.getText();
+					if (tag == null || tag.equals("")) {
+						JOptionPane.showMessageDialog(getContentPane(), "请在文本框中输入后缀", "系统信息",
+								JOptionPane.WARNING_MESSAGE);
+						return;
+					}
 				}
 				if (currPathString == null || currPathString.equals("")) {
 					JOptionPane.showMessageDialog(getContentPane(), "请选择文件夹", "系统信息", JOptionPane.WARNING_MESSAGE);
+					return;
+				}
+				if (!jCheckBox.isSelected() && !jCheckBox0.isSelected() && !jCheckBox1.isSelected()) {
+					JOptionPane.showMessageDialog(getContentPane(), "请选择处理文件名的模式", "系统信息", JOptionPane.WARNING_MESSAGE);
 					return;
 				}
 				doIt();
 			}
 		});
 		setVisible(true);
+
+		api = new TransApi(APP_ID, SECURITY_KEY);
 	}
 
 	private List<String> fileNameList = new ArrayList<String>();
+	private int count = 0;
 
 	/**
 	 * 思路 1、遍历所有的文件 2、找出所有以@2和@3结尾的文件 3、将以不同后缀结尾的文件分别复制到各自的文件夹下 4、去掉后缀 5、搞定
@@ -123,17 +209,18 @@ public class Modify extends JFrame {
 		textArea.append("开始遍历文件....................\n");
 		// 所有的文件列表
 		list.clear();
-		for (File file : list) {
-			fileNameList.add(file.getName());
-		}
 		try {
 			showAllFiles(new File(currPathString));
 		} catch (Exception e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
+		count = 0;
 		final String[] str = textField.getText().split(" ");
-		final int count = textField.getText().split(" ").length;
+		if (jCheckBox2.isSelected()) {
+			count = 1;
+		} else {
+			count = textField.getText().split(" ").length;
+		}
 		final List<ArrayList<String>> sourceArrayLists = new ArrayList<ArrayList<String>>();
 		for (int i = 0; i < count; i++) {
 			sourceArrayLists.add(new ArrayList<String>());
@@ -141,18 +228,31 @@ public class Modify extends JFrame {
 		System.out.println("sourceArrayLists.size() " + sourceArrayLists.size());
 		System.out.println("list.size() " + list.size());
 		for (int i = 0; i < list.size(); i++) {
-			HH: for (int j = 0; j < count; j++) {
+			if (jCheckBox2.isSelected()) {
+				// 仅修改文件
 				String pathString = list.get(i).getAbsolutePath();
-				if (pathString.contains(str[j])) {
-					sourceArrayLists.get(j).add(pathString);
-					System.out.println(str[j] + "  " + pathString);
-					break HH;
+				sourceArrayLists.get(0).add(pathString);
+				System.out.println("翻译" + "  " + pathString);
+			} else {
+				HH: for (int j = 0; j < count; j++) {
+					String pathString = list.get(i).getAbsolutePath();
+					if (pathString.contains(str[j])) {
+						sourceArrayLists.get(j).add(pathString);
+						System.out.println(str[j] + "  " + pathString);
+						break HH;
+					}
 				}
 			}
 		}
 		textArea.append("开始复制文件....................\n");
 		new Thread(new Runnable() {
 			public void run() {
+				int length = 100000;
+				try {
+					length = Integer.parseInt(jcb.getSelectedItem().toString());
+				} catch (Exception e) {
+					// TODO: handle exception
+				}
 				for (int i = 0; i < count; i++) {
 					textArea.append("第" + (i + 1) + "轮复制....................\n");
 					fileNameList.clear();
@@ -160,20 +260,63 @@ public class Modify extends JFrame {
 						String path = sourceArrayLists.get(i).get(j);
 						// banner.png
 						String pathAim = path.substring(path.lastIndexOf(separator) + 1).replaceAll(str[i], "");
-						if (jCheckBox.isSelected()) {
+						if (jCheckBox0.isSelected()) {
+							// 保留原文件名
+							String end = pathAim.substring(pathAim.lastIndexOf(".") + 1);
+							String start = pathAim.substring(0, pathAim.lastIndexOf("."));
+							System.out.println(pathAim + "->" + start);
+							String result;
+							if (length < start.length()) {
+								// 长度超了
+								start = start.substring(0, length);
+							}
+							result = start + "." + end;
+							int index = 0;
+							while (fileNameList.contains(result)) {
+								// 此次不合格
+								result = start.substring(0, start.length() - (index + "").length()) + index++ + "."
+										+ end;
+							}
+							System.out.println(path);
+							System.out.println(result);
+							// C:\Users\sks\Desktop\resources\resources\banner@2x.png
+							// C:\Users\sks\Desktop\resources\resources/@2x
+							if (jCheckBox2.isSelected()) {
+								// 仅翻译
+								copyFile(path, currPathString + separator + "翻译文件名", result);
+							} else
+								copyFile(path, currPathString + separator + str[i], result);
+						} else if (jCheckBox.isSelected()) {
+							// 中文转拼音
 							String end = pathAim.substring(pathAim.lastIndexOf(".") + 1);
 							String start = pathAim.substring(0, pathAim.lastIndexOf("."));
 							String resultStart = getPinyi(start);
+							System.out.println(pathAim + "->" + resultStart);
 							String result;
 							if (resultStart == null || resultStart.equals("")) {
 								// 不含中文 原文输出
-								result = pathAim;
+								if (length < start.length()) {
+									// 长度超了
+									start = start.substring(0, length);
+								}
+								result = start + "." + end;
+								int index = 0;
+								while (fileNameList.contains(result)) {
+									// 此次不合格
+									result = start.substring(0, start.length() - (index + "").length()) + index++ + "."
+											+ end;
+								}
 							} else {
+								if (length < resultStart.length()) {
+									// 长度超了
+									resultStart = resultStart.substring(0, length);
+								}
 								result = resultStart + "." + end;
 								int index = 0;
 								while (fileNameList.contains(result)) {
 									// 此次不合格
-									result = resultStart + index++ + "." + end;
+									result = resultStart.substring(0, resultStart.length() - (index + "").length())
+											+ index++ + "." + end;
 								}
 							}
 							fileNameList.add(result);
@@ -181,11 +324,39 @@ public class Modify extends JFrame {
 							System.out.println(result);
 							// C:\Users\sks\Desktop\resources\resources\banner@2x.png
 							// C:\Users\sks\Desktop\resources\resources/@2x
-							copyFile(path, currPathString + separator + str[i], result);
-						} else {
+							if (jCheckBox2.isSelected()) {
+								// 仅翻译
+								copyFile(path, currPathString + separator + "翻译文件名", result);
+							} else
+								copyFile(path, currPathString + separator + str[i], result);
+						} else if (jCheckBox1.isSelected()) {
+							// 用英文翻译
+							String end = pathAim.substring(pathAim.lastIndexOf(".") + 1);
+							String start = pathAim.substring(0, pathAim.lastIndexOf("."));
+							start = dealTranslate(start);
+							System.out.println(pathAim + "->" + start);
+							String result;
+							if (length < start.length()) {
+								// 长度超了
+								start = start.substring(0, length);
+							}
+							result = start + "." + end;
+							int index = 0;
+							while (fileNameList.contains(result)) {
+								// 此次不合格
+								result = start.substring(0, start.length() - (index + "").length()) + index++ + "."
+										+ end;
+							}
+							fileNameList.add(result);
+							System.out.println(path);
+							System.out.println(result);
 							// C:\Users\sks\Desktop\resources\resources\banner@2x.png
 							// C:\Users\sks\Desktop\resources\resources/@2x
-							copyFile(path, currPathString + separator + str[i], pathAim);
+							if (jCheckBox2.isSelected()) {
+								// 仅翻译
+								copyFile(path, currPathString + separator + "翻译文件名", result);
+							} else
+								copyFile(path, currPathString + separator + str[i], result);
 						}
 					}
 				}
@@ -199,8 +370,10 @@ public class Modify extends JFrame {
 	/**
 	 * 复制单个文件
 	 * 
-	 * @param oldPath String 原文件路径 如：c:/fqf.txt
-	 * @param newPath String 复制后路径 如：f:/fqf.txt
+	 * @param oldPath
+	 *            String 原文件路径 如：c:/fqf.txt
+	 * @param newPath
+	 *            String 复制后路径 如：f:/fqf.txt
 	 * @return boolean
 	 */
 	public synchronized void copyFile(String oldPath, String newPath, String fileName) {
@@ -222,7 +395,7 @@ public class Modify extends JFrame {
 					bytesum += byteread; // 字节数 文件大小
 					fs.write(buffer, 0, byteread);
 				}
-				textArea.append(oldPath + "->" + fileName + "复制成功\n");
+				textArea.append(oldPath + "->" + fileName + " 复制成功\n");
 				inStream.close();
 			}
 		} catch (Exception e) {
@@ -262,6 +435,49 @@ public class Modify extends JFrame {
 		new Modify();
 	}
 
+	// 中文验证规则
+	private String regEx = "[\u4e00-\u9fa5]{1,}";
+	// 编译正则表达式
+	private Pattern pattern = Pattern.compile(regEx);
+
+	/**
+	 * 对翻译结果进行处理
+	 * 
+	 * @param res
+	 * @return
+	 */
+	public String dealTranslate(String res) {
+		Matcher matcher = pattern.matcher(res);
+		// 字符串是否与正则表达式相匹配
+		StringBuffer finalStr = new StringBuffer();
+		int end = 0;
+		while (matcher.find()) {
+			finalStr.append(res.substring(end, matcher.start()));
+			String result = translate(matcher.group());
+			finalStr.append(result);
+			end = matcher.end();
+		}
+		finalStr.append(res.substring(end, res.length()));
+		return finalStr.toString().replaceAll(" ", "_");
+	}
+
+	/**
+	 * 翻译
+	 * 
+	 * @param res
+	 * @return
+	 */
+	private String translate(String res) {
+		String result = api.getTransResult(res, "zh", "en");
+		TranslateModel translateModel = gson.fromJson(result, new TypeToken<TranslateModel>() {
+		}.getType());
+		if (translateModel.getTrans_result() != null && !translateModel.getTrans_result().isEmpty()) {
+			String translate = translateModel.getTrans_result().get(0).getDst().toLowerCase();
+			return translate;
+		}
+		return "";
+	}
+
 	/**
 	 * 获取文字的拼音组合
 	 * 
@@ -269,20 +485,16 @@ public class Modify extends JFrame {
 	 * @return
 	 */
 	public static String getPinyi(String text) {
-		if (text.length() > 4) {
-			text = text.substring(0, 4);
-		}
+		// if (text.length() > 4) {
+		// text = text.substring(0, 4);
+		// }
+		text = text.replaceAll(" ", "");
 		StringBuffer stringBuffer = new StringBuffer();
 		for (int i = 0; i < text.length(); i++) {
 			String[] pinyinArray = PinyinHelper.toHanyuPinyinStringArray(text.charAt(i));
 			if (pinyinArray != null && pinyinArray.length > 0) {
 				String str = pinyinArray[0];
-				if (i < 2) {
-					stringBuffer.append(str.substring(0, str.length() - 1));
-				} else {
-					if (str.length() > 0)
-						stringBuffer.append(str.substring(0, 1));
-				}
+				stringBuffer.append(str.substring(0, str.length() - 1));
 			}
 		}
 		return stringBuffer.toString();
