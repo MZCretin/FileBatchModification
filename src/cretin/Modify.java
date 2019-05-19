@@ -37,8 +37,8 @@ import net.sourceforge.pinyin4j.PinyinHelper;
 import translate.TransApi;
 
 public class Modify extends JFrame {
-	private final int mWidth = 600;
-	private final int mHeight = 430;
+	private final int mWidth = 750;
+	private final int mHeight = 490;
 	private static final String APP_ID = "20181010000217324";
 	private static final String SECURITY_KEY = "DmBJdQAnrfIEwgAfFKgN";
 	private JPanel panel;
@@ -48,7 +48,9 @@ public class Modify extends JFrame {
 	private JCheckBox jCheckBox;
 	private JCheckBox jCheckBox1;
 	private JCheckBox jCheckBox2;
+	private JCheckBox jCheckBox3;
 	private JTextField textField;
+	private JTextField textField1;
 	private JTextArea textArea;
 	private JComboBox jcb;
 	private JLabel jLabel;
@@ -75,13 +77,18 @@ public class Modify extends JFrame {
 		jCheckBox = new JCheckBox("文件名中文转拼音");
 		jCheckBox1 = new JCheckBox("文件名中文转英文");
 		jCheckBox2 = new JCheckBox("仅翻译文件名");
-		jLabel = new JLabel("设置文件名称最大长度");
+		jCheckBox3 = new JCheckBox("按规则替换");
+		jLabel = new JLabel("设置文件名称最大长度值");
 		jcb = new JComboBox(jcbList);
 		jCheckBox1.setSelected(true);
-		textField = new JTextField(10);
+		textField = new JTextField(15);
+		textField1 = new JTextField(15);
+		textField1.setEditable(false);
 		textField.setText("@2x @3x");
+		textField1.setText("A a;- _;");
 		textField.addFocusListener(new JTextFieldHintListener("请输入尺寸后缀", textField));
-		textArea = new JTextArea(20, 48);
+		textField1.addFocusListener(new JTextFieldHintListener("请输入匹配规则", textField1));
+		textArea = new JTextArea(24, 60);
 		jsp = new JScrollPane(textArea);
 		jsp.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
 		textArea.setLineWrap(true);// 设置文本区的换行策略
@@ -94,6 +101,8 @@ public class Modify extends JFrame {
 		panel.add(jCheckBox);
 		panel.add(jCheckBox1);
 		panel.add(jCheckBox2);
+		panel.add(textField1);
+		panel.add(jCheckBox3);
 		panel.add(jLabel);
 		panel.add(jcb);
 		panel.add(buttonSelect);
@@ -105,8 +114,10 @@ public class Modify extends JFrame {
 				"欢迎使用Cretin文件批量修改器 \n1、先在文本框输入不同尺寸图片的后缀(比如：pic@2x.png(两倍图),pic@3x.png(三倍图),那么您应该输入@2x跟@3x)，中间以空格隔开\n");
 		textArea.append("2、选择包含所有图片文件的文件夹\n");
 		textArea.append("3、点击开始，将为你自动分类图片\n");
-		textArea.append(
-				"4、图片分类成功后会在你选择的文件夹下面新建以后缀命名的文件夹(比如：@2x和@3两个文件夹，分别装有两倍图和三倍图图片)\n5、使用中有什么问题可联系：mxnzp_life@163.com\n");
+		textArea.append("4、图片分类成功后会在你选择的文件夹下面新建以后缀命名的文件夹(比如：@2x和@3两个文件夹，分别装有两倍图和三倍图图片)\n"
+				+ "5、文件名中文转拼音：自动将汉字转化成拼音作为文件名\n" + "7、文件名中文转英文：自动将汉字转化成英文作为文件名\n"
+				+ "8、仅翻译文件名：不会按后缀名进行分类，仅仅翻译文件夹内文件的名称\n" + "9、按规则替换：不同的规则用;分隔开，每一组规则通过空格分割，比如- _（其中A a特指英文字母大写转小写，Android资源文件不能有大写），程序会用空格后面字符替换掉前面的内容\n"
+				+ "10、设置文件名称最大长度值：设置后当文件名超过此长度后会自动截取\n" + "11、使用中有什么问题可联系：mxnzp_life@163.com\n");
 		textArea.append("-----------------------------------------\n");
 
 		add(panel);
@@ -140,6 +151,18 @@ public class Modify extends JFrame {
 				if (jcb.isSelected()) {// 判断是否被选择
 					jCheckBox0.setSelected(false);
 					jCheckBox.setSelected(false);
+				}
+			}
+		});
+
+		jCheckBox3.addItemListener(new ItemListener() {
+
+			public void itemStateChanged(ItemEvent e) {
+				JCheckBox jcb = (JCheckBox) e.getItem();// 将得到的事件强制转化为JCheckBox类
+				if (jcb.isSelected()) {// 判断是否被选择
+					textField1.setEditable(true);
+				} else {
+					textField1.setEditable(false);
 				}
 			}
 		});
@@ -386,6 +409,25 @@ public class Modify extends JFrame {
 	 * @return boolean
 	 */
 	public synchronized void copyFile(String oldPath, String newPath, String fileName) {
+		fileName = fileName.replaceAll(" ", "");
+		if (jCheckBox3.isSelected()) {
+			// 按规则替换文件名 - _;
+			String text = textField1.getText();
+			if (text != null && !text.equals("")) {
+				String[] split = text.split(";");
+				for (int i = 0; i < split.length; i++) {
+					String aim = split[i];
+					if (aim.contains(" ") && aim.split(" ").length == 2) {
+						if("A".equals(aim.split(" ")[0])&&"a".equals(aim.split(" ")[1])) {
+							//大写转小写
+							fileName = fileName.toLowerCase();
+						}else {
+							fileName = fileName.replaceAll(aim.split(" ")[0], aim.split(" ")[1]);
+						}
+					}
+				}
+			}
+		}
 		InputStream inStream = null;
 		FileOutputStream fs = null;
 		try {
